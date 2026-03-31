@@ -6,6 +6,9 @@ require('dotenv').config();
 
 const app = express();
 
+// ============ CONFIGURATION ============
+const PORT = process.env.PORT || 3000;
+
 // ============ MIDDLEWARE (Order matters!) ============
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -49,7 +52,20 @@ const Game = mongoose.model('Game', gameSchema);
 
 // ============ HEALTH CHECK ENDPOINT ============
 app.get('/health', (req, res) => {
-    res.json({ status: 'OK', message: 'Server is running' });
+    res.json({ status: 'OK', message: 'Server is running', timestamp: new Date().toISOString() });
+});
+
+// Debug endpoint
+app.get('/debug', (req, res) => {
+    res.json({
+        status: 'Server Running',
+        nodeVersion: process.version,
+        environment: process.env.NODE_ENV,
+        mongoConnected: mongoose.connection.readyState === 1,
+        port: PORT,
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+    });
 });
 
 // ============ API ROUTES (PRIORITY!) ============
@@ -160,7 +176,6 @@ app.use((err, req, res, next) => {
 });
 
 // ============ START SERVER ============
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`\n🚀 GameHub Server Started!`);
     console.log(`📍 Running on: http://localhost:${PORT}`);

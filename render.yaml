@@ -16,4 +16,3 @@ services:
     healthCheckPath: /health
     healthCheckInterval: 10
     autoDeploy: true
-    dockerfilePath: ./Dockerfile

@@ -4,11 +4,16 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install
-    startCommand: node server.js
+    startCommand: npm start
+    numInstances: 1
     envVars:
       - key: MONGODB_URI
         value: mongodb+srv://testuser:testpassword123@cluster0.vulsn3z.mongodb.net/?appName=Cluster0
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 3000
     healthCheckPath: /health
+    healthCheckInterval: 10
     autoDeploy: true
+    dockerfilePath: ./Dockerfile

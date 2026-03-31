@@ -129,7 +129,10 @@ function addGame(e) {
             },
             body: JSON.stringify(gameData)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+            return response.json();
+        })
         .then(() => {
             editingGameId = null;
             resetForm();
@@ -138,7 +141,7 @@ function addGame(e) {
             loadGames();
         })
         .catch(error => {
-            console.error('Error updating game:', error);
+            console.error('❌ Error updating game:', error);
             alert('Failed to update game. Please try again.');
         });
     } else {
@@ -150,7 +153,10 @@ function addGame(e) {
             },
             body: JSON.stringify(gameData)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+            return response.json();
+        })
         .then(() => {
             resetForm();
             document.getElementById('addGameForm').style.display = 'none';
@@ -158,8 +164,8 @@ function addGame(e) {
             loadGames();
         })
         .catch(error => {
-            console.error('Error adding game:', error);
-            alert('Failed to add game. Please try again.');
+            console.error('❌ Error adding game:', error);
+            alert('Failed to add game. Please check your connection and try again.');
         });
     }
 }
@@ -172,12 +178,16 @@ function deleteGame(id, event) {
         fetch(`${API_URL}/${id}`, {
             method: 'DELETE'
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+            return response.json();
+        })
         .then(() => {
+            console.log('✅ Game deleted successfully');
             loadGames();
         })
         .catch(error => {
-            console.error('Error deleting game:', error);
+            console.error('❌ Error deleting game:', error);
             alert('Failed to delete game. Please try again.');
         });
     }
@@ -299,22 +309,48 @@ function editGame(id, event) {
 // Load games from MongoDB API
 function loadGames() {
     fetch(API_URL)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            games = data;
+            games = Array.isArray(data) ? data : [];
             renderGames();
         })
         .catch(error => {
-            console.error('Error loading games:', error);
-            alert('Failed to load games from server.');
-            games = [];
+            console.error('❌ Error loading games from API:', error);
+            // Fallback to localStorage
+            console.log('📝 Falling back to localStorage...');
+            loadGamesFromLocalStorage();
             renderGames();
         });
 }
 
+// Load games from localStorage (fallback)
+function loadGamesFromLocalStorage() {
+    const saved = localStorage.getItem('gameHubGames');
+    if (saved) {
+        try {
+            games = JSON.parse(saved);
+            console.log('✅ Loaded games from localStorage');
+        } catch (e) {
+            console.error('Error parsing localStorage:', e);
+            games = [];
+        }
+    } else {
+        games = [];
+    }
+}
+
 // Save games to local storage (fallback)
 function saveGames() {
-    localStorage.setItem('gameHubGames', JSON.stringify(games));
+    try {
+        localStorage.setItem('gameHubGames', JSON.stringify(games));
+    } catch (e) {
+        console.error('Error saving to localStorage:', e);
+    }
 }
 
 // Export games as JSON (for backup)

@@ -10,7 +10,6 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(express.static(path.join(__dirname, '.')));
 
 // MongoDB Connection
 const mongoString = process.env.MONGODB_URI || 'mongodb+srv://testuser:testpassword123@cluster0.vulsn3z.mongodb.net/?appName=Cluster0';
@@ -20,10 +19,10 @@ mongoose.connect(mongoString, {
     useUnifiedTopology: true,
 })
 .then(() => {
-    console.log('Connected to MongoDB');
+    console.log('✅ Connected to MongoDB');
 })
 .catch((error) => {
-    console.error('MongoDB connection error:', error);
+    console.error('❌ MongoDB connection error:', error);
 });
 
 // Game Schema
@@ -42,15 +41,20 @@ const gameSchema = new mongoose.Schema({
 
 const Game = mongoose.model('Game', gameSchema);
 
-// Routes
+// Health check - MUST be before API routes
+app.get('/health', (req, res) => {
+    res.json({ status: 'Server is running' });
+});
 
+// API ROUTES - MUST be before static files
 // GET all games
 app.get('/api/games', async (req, res) => {
     try {
         const games = await Game.find().sort({ createdAt: -1 });
         res.json(games);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch games' });
+        console.error('Error fetching games:', error);
+        res.status(500).json({ error: 'Failed to fetch games', details: error.message });
     }
 });
 
@@ -69,7 +73,8 @@ app.post('/api/games', async (req, res) => {
         const savedGame = await newGame.save();
         res.status(201).json(savedGame);
     } catch (error) {
-        res.status(400).json({ error: 'Failed to add game' });
+        console.error('Error adding game:', error);
+        res.status(400).json({ error: 'Failed to add game', details: error.message });
     }
 });
 
@@ -94,7 +99,8 @@ app.put('/api/games/:id', async (req, res) => {
 
         res.json(updatedGame);
     } catch (error) {
-        res.status(400).json({ error: 'Failed to update game' });
+        console.error('Error updating game:', error);
+        res.status(400).json({ error: 'Failed to update game', details: error.message });
     }
 });
 
@@ -109,22 +115,27 @@ app.delete('/api/games/:id', async (req, res) => {
 
         res.json({ message: 'Game deleted successfully' });
     } catch (error) {
-        res.status(400).json({ error: 'Failed to delete game' });
+        console.error('Error deleting game:', error);
+        res.status(400).json({ error: 'Failed to delete game', details: error.message });
     }
 });
 
-// Health check
-app.get('/health', (req, res) => {
-    res.json({ status: 'Server is running' });
-});
+// STATIC FILES - After API routes so /api/* routes are protected
+app.use(express.static(path.join(__dirname, '.')));
 
-// Serve index.html for root path
+// Serve index.html for root path (catch-all for SPA)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Catch-all 404 for any remaining routes
+app.use((req, res) => {
+    res.status(404).json({ error: 'Route not found' });
 });
 
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`🚀 Server is running on port ${PORT}`);
+    console.log(`📍 Access your app at: http://localhost:${PORT}`);
 });

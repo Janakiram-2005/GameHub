@@ -1,11 +1,12 @@
-// Game data - stored in browser's local storage
+// Game data - fetched from MongoDB
 let games = [];
 let selectedImageData = null;
+let editingGameId = null;
+const API_URL = '/api/games';
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadGames();
-    renderGames();
     setupEventListeners();
 });
 
@@ -110,8 +111,8 @@ function addGame(e) {
     }
 
     // Create game object with base64 image and multiple categories
-    const newGame = {
-        id: Date.now(),
+    const gameData = {
+        id: editingGameId || Date.now(),
         name: gameName,
         logo: selectedImageData, // Base64 image data
         description: gameDescription,
@@ -119,21 +120,48 @@ function addGame(e) {
         link: gameLink
     };
 
-    // Add to games array
-    games.push(newGame);
-
-    // Save to local storage
-    saveGames();
-
-    // Reset form
-    resetForm();
-
-    // Hide form
-    document.getElementById('addGameForm').style.display = 'none';
-    document.getElementById('toggleFormBtn').textContent = '+ Add New Game';
-
-    // Render games
-    renderGames();
+    // If editing, make PUT request
+    if (editingGameId) {
+        fetch(`${API_URL}/${editingGameId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(gameData)
+        })
+        .then(response => response.json())
+        .then(() => {
+            editingGameId = null;
+            resetForm();
+            document.getElementById('addGameForm').style.display = 'none';
+            document.getElementById('toggleFormBtn').textContent = '+ Add New Game';
+            loadGames();
+        })
+        .catch(error => {
+            console.error('Error updating game:', error);
+            alert('Failed to update game. Please try again.');
+        });
+    } else {
+        // If adding new, make POST request
+        fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(gameData)
+        })
+        .then(response => response.json())
+        .then(() => {
+            resetForm();
+            document.getElementById('addGameForm').style.display = 'none';
+            document.getElementById('toggleFormBtn').textContent = '+ Add New Game';
+            loadGames();
+        })
+        .catch(error => {
+            console.error('Error adding game:', error);
+            alert('Failed to add game. Please try again.');
+        });
+    }
 }
 
 // Delete game
@@ -141,9 +169,17 @@ function deleteGame(id, event) {
     event.stopPropagation(); // Prevent triggering play game
     
     if (confirm('Are you sure you want to delete this game?')) {
-        games = games.filter(game => game.id !== id);
-        saveGames();
-        renderGames();
+        fetch(`${API_URL}/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(() => {
+            loadGames();
+        })
+        .catch(error => {
+            console.error('Error deleting game:', error);
+            alert('Failed to delete game. Please try again.');
+        });
     }
 }
 
@@ -164,6 +200,7 @@ function resetForm() {
     document.getElementById('gameLink').value = '';
     document.getElementById('imagePreview').innerHTML = '';
     selectedImageData = null;
+    editingGameId = null;
 }
 
 // Render all games
@@ -220,6 +257,7 @@ function editGame(id, event) {
     
     const game = games.find(g => g.id === id);
     if (game) {
+        editingGameId = id;
         document.getElementById('gameName').value = game.name;
         document.getElementById('gameDescription').value = game.description;
         document.getElementById('gameLink').value = game.link;
@@ -250,36 +288,33 @@ function editGame(id, event) {
             });
         });
 
-        // Remove the old game
-        games = games.filter(g => g.id !== id);
-
         // Show form and scroll to it
         const form = document.getElementById('addGameForm');
         form.style.display = 'block';
         document.getElementById('toggleFormBtn').textContent = '✕ Close Form';
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-        // Save games without the edited one
-        saveGames();
     }
 }
 
-// Save games to local storage
+// Load games from MongoDB API
+function loadGames() {
+    fetch(API_URL)
+        .then(response => response.json())
+        .then(data => {
+            games = data;
+            renderGames();
+        })
+        .catch(error => {
+            console.error('Error loading games:', error);
+            alert('Failed to load games from server.');
+            games = [];
+            renderGames();
+        });
+}
+
+// Save games to local storage (fallback)
 function saveGames() {
     localStorage.setItem('gameHubGames', JSON.stringify(games));
-}
-
-// Load games from local storage
-function loadGames() {
-    const saved = localStorage.getItem('gameHubGames');
-    if (saved) {
-        try {
-            games = JSON.parse(saved);
-        } catch (e) {
-            console.error('Error loading games:', e);
-            games = [];
-        }
-    }
 }
 
 // Export games as JSON (for backup)

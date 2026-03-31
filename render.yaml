@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: gamehub
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb+srv://testuser:testpassword123@cluster0.vulsn3z.mongodb.net/?appName=Cluster0
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /health
+    autoDeploy: true
